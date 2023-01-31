@@ -1,6 +1,6 @@
 .area {
   width: 100%;
-  margin: auto;
+  margin: left;
   flex-wrap: wrap;
   display: flex;
 }
