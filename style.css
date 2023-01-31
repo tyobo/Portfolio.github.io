@@ -1,5 +1,5 @@
 .area {
-  width: 500px;
+  width: 100px;
   margin: auto;
   flex-wrap: wrap;
   display: flex;
@@ -20,10 +20,16 @@
 .hr{
 border-top: 5px solid #000;
 }
+.subhr
+{
+  border-top: 2px solid #000;
+}
 
 h1{
   text-align: center;
 }
+
+
 input[name="tab_name"] {
   display: none;
 }
@@ -41,3 +47,4 @@ input:checked + .tab_class {
 input:checked + .tab_class + .content_class {
   display: block;
 }
+
