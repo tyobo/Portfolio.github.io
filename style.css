@@ -47,4 +47,3 @@ input:checked + .tab_class {
 input:checked + .tab_class + .content_class {
   display: block;
 }
-
