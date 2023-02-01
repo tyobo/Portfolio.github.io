@@ -47,3 +47,7 @@ input:checked + .tab_class {
 input:checked + .tab_class + .content_class {
   display: block;
 }
+#pattern1 {
+  background-color:#7fffd4;
+  width:300px;
+  }
