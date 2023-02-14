@@ -48,8 +48,8 @@ input:checked + .tab_class + .content_class {
   display: block;
 }
 pre{
-  width: 100px;
-  height:100px;
+  width: 560px;
+  height:315px;
 }
 /*ソースコード用*/
 .code{ 
