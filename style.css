@@ -52,17 +52,17 @@ input:checked + .tab_class + .content_class {
 .code{
   position:relative;
   margin-left: 0px;
-  padding:30px 0 10px 20px;
-  border-left: solid 10px #000000;
+  padding: 10px 50px 20px;
+  border-left: solid 5px #000000;
   background:#2F3437;
   list-style:none;
   color: #fff;
-  font: size 16px;
+  font-size:2em;
   overflow: auto;
   }
   .code.python:after{content: 'Python'; background: #000000;}
   .code.unity:after{content: 'Unity'; background: #000000;}
-  .code.css:after, .code.html:after, .code.js:after, .code.php:after,.code.code.unity:after{
+  .code.unity:after,.code.python:after{
   position: absolute;
   top: 0px;
   left: 0px;
