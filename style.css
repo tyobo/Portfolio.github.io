@@ -39,6 +39,7 @@ input:checked + .tab_class {
   width: 100%;
 }
 
+
 /*ソースコード用*/
 .code{ 
   position:relative;
@@ -51,10 +52,8 @@ input:checked + .tab_class {
   font-size:1em;
   overflow: auto;
   }
-  .code.css:after{content: 'CSS'; background: #e382a2;}
-  .code.html:after{content: 'HTML'; background: #834f3d;}
-  .code.js:after{content: 'JS'; background: #ca8004;}
-  .code.php:after{content: 'PHP'; background: #5e7e2c;}
+  .code.css:after{content: 'C#'; background: #000000;}
+  .code.html:after{content: 'Python'; background: #834f3d;}
   .code.css:after, .code.html:after, .code.js:after, .code.php:after{
   position: absolute;
   top: 0px;
