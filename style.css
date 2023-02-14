@@ -29,6 +29,11 @@ h1{
   text-align: center;
 }
 
+
+input[name="tab_name"] {
+  display: none;
+}
+
 input:checked + .tab_class {
   background-color:black;
   color: white;
@@ -39,6 +44,9 @@ input:checked + .tab_class {
   width: 100%;
 }
 
+input:checked + .tab_class + .content_class {
+  display: block;
+}
 
 /*ソースコード用*/
 .code{ 
