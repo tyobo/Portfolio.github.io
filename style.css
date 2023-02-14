@@ -53,18 +53,16 @@ input:checked + .tab_class + .content_class {
   position:relative;
   margin-left: 0px;
   padding:30px 0 10px 20px;
-  border-left: solid 10px #fb8a8a;
+  border-left: solid 10px #000000;
   background:#2F3437;
   list-style:none;
   color: #fff;
   font-size:1em;
   overflow: auto;
   }
-  .code.css:after{content: 'CSS'; background: #e382a2;}
-  .code.html:after{content: 'HTML'; background: #834f3d;}
-  .code.js:after{content: 'JS'; background: #ca8004;}
-  .code.php:after{content: 'PHP'; background: #5e7e2c;}
-  .code.css:after, .code.html:after, .code.js:after, .code.php:after{
+  .code.python:after{content: 'Python'; background: #a1e382;}
+  .code.unity:after{content: 'Unity'; background: #5e7e2c;}
+  .code.css:after, .code.html:after, .code.js:after, .code.php:after,.code.code.unity:after{
   position: absolute;
   top: 0px;
   left: 0px;
