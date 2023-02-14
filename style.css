@@ -62,4 +62,5 @@ pre{
   color: #fff;
   font-size:1em;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   }
