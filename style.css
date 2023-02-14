@@ -47,7 +47,10 @@ input:checked + .tab_class {
 input:checked + .tab_class + .content_class {
   display: block;
 }
-
+pre{
+  width: 100px;
+  height:100px;
+}
 /*ソースコード用*/
 .code{ 
   position:relative;
@@ -59,15 +62,4 @@ input:checked + .tab_class + .content_class {
   color: #fff;
   font-size:1em;
   overflow: auto;
-  }
-  .code.python:after{content: 'Python'; background: #a1e382;}
-  .code.unity:after{content: 'Unity'; background: #5e7e2c;}
-  .code.css:after, .code.html:after, .code.js:after, .code.php:after,.code.code.unity:after{
-  position: absolute;
-  top: 0px;
-  left: 0px;
-  padding: 5px 10px;
-  line-height: 1;
-  font-size: 0.9em;
-  color: #fff;
   }
