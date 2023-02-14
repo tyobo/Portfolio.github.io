@@ -57,7 +57,7 @@ input:checked + .tab_class + .content_class {
   background:#2F3437;
   list-style:none;
   color: #fff;
-  font-size:2em;
+  font-size:5em;
   overflow: auto;
   }
   .code.python:after{content: 'Python'; background: #000000;}
