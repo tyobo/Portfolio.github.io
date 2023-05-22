@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>TunaToKazeToMau</title>
+    <title>MousouWar</title>
     <link rel="stylesheet" href="style.css"/>
     <link rel="stylesheet" href="https://tyobo.github.io/Portfolio.github.io/vs2015.min.css"/>
     <script src="https://tyobo.github.io/Portfolio.github.io/highlight.min.js"></script>
@@ -11,16 +11,16 @@
   <div>
       <h3>概要</h3>
       <hr class="subhr">
-      <p>ジャンル：2D横スクロールアクション</p>
-      <p>プレイ人数：1人</p>
-      <p>プラットフォーム：iPad mini</p>
+      <p>ジャンル：対戦型タワーディフェンス</p>
+      <p>プレイ人数：2人</p>
+      <p>プラットフォーム：PC</p>
       <p>開発環境：2020.2.5f1</p>
       <p>使用言語：C#</p>
-      <p>開発人数：8人(リーダ１人・プランナー１人・プログラマーリーダー１人・プログラマー４人・2Dデザイナー１人)</p>
-      <p>株式会社ドワンゴ様の企業プロジェクト</p>
+      <p>開発人数：13人(リーダ１人・プランナー3人・プログラマーリーダー１人・プログラマー6人・2Dデザイナー2人)</p>
+      <p>プロジェクト後半でほとんど出来てないチームに入り完成まで持っていきました。</p>
       <h3>担当箇所</h3>
       <hr class="subhr">
-      <h3>AudioSourceによるAudioManagerの作成</h3>
+      <h3>城からドラゴンに変身させる処理と炎を出す処理</h3>
       <hr>
     <div>
       <pre class="code C#"><code>
@@ -28,174 +28,126 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-///<summary>
-///BGMとSEの管理をするマネージャー
-///</summary>
-///
-[System.Serializable]
-public class Sound
+public class ChangeDragon : MonoBehaviour
 {
-    private AudioSource source;
-    //=================================================================================
-    //オーディオ詳細
-    //=================================================================================
-    public string Name; //オーディオの名前
-    public AudioClip Clip; //オーディオ保管
-    [Range(0f, 1f)] public float Volume = 0.7f; //オーディオのボリューム
-    [Range(0f, 1.5f)] public float Pitch = 1f; //オーディオのピッチ
-
-    [Range(0f, 0.5f)] public float RandomVolume = 0.1f;
-    [Range(0f, 0.5f)] public float RandomPicth = 0.1f;
-
-    public bool loop = false; //ループのチェック
-
-    public void SetSource(AudioSource _source)
+    [SerializeField] GameObject _dragon1;
+    [SerializeField] GameObject _dragon2;
+    [SerializeField] GameObject _unit_location;
+    [SerializeField] GameObject _dragonfire1;
+    [SerializeField] GameObject _dragonfire2;
+    [Header("召喚されるまでの/秒")]
+    public float blows_up_to_time;
+    [Header("火が消える時間/秒")]
+    public float disappear_until;
+    bool is_wichFire = false;
+        
+    public void SummonDragon1()
     {
-source = _source;
-source.clip = Clip;
-source.loop = loop;
+        is_wichFire = false;        //SummonDragon1が呼ばれたらfalseにする
+        StartCoroutine("Dragon");   
+                
     }
-
-    public void Play() //プレイメソッド
+        
+    public void SummonDragon2()
     {
-source.volume = Volume * (1 + Random.Range(-RandomVolume / 2f, RandomVolume / 2f)); //ランダムでボリュームを変える
-source.pitch = Pitch * (1 + Random.Range(-RandomPicth / 2f, RandomPicth / 2f)); //ランダムでピッチを変える
-source.Play();
+        is_wichFire = true;
+        StartCoroutine("Dragon");
     }
-    public void Stop() //ストップメソッド
+        
+    private IEnumerator Dragon()
     {
-source.Stop();
-    }
-}
-public class AudioManager : MonoBehaviour
-{
-
-    public static AudioManager instance;
-
-    [SerializeField] Sound[] sounds;
-    //=================================================================================
-    //初期化
-    //=================================================================================
-
-    void Awake()
-    {
-if (instance != null)
-{
-    if (instance != this)
-    {
-Destroy(this.gameObject);
-    }
-}
-else
-{
-    instance = this;
-}
-    }
-
-    void Start()
-    {
-//セットサウンドにひとつずつ格納
-for (int i = 0; i < sounds.Length; i++)
-{
-    GameObject _go = new GameObject("Sound_" + i + "_" + sounds[i].Name);
-    sounds[i].SetSource(_go.AddComponent<AudioSource>());
-}
-    }
-    public void PlaySound(string _Name) //プレイサウンドメソッド
-    {
-for (int i = 0; i < sounds.Length; i++)
-{
-    if (sounds[i].Name == _Name)
-    {
-sounds[i].Play(); //選んだ曲があった場合
-return;
-    }
-    else
-    {
-Debug.Log(_Name + "がありません");//なかった場合
-    }
-}
-
-    }
-    public void StopSound(string _Name) //ストップサウンドメソッド
-    {
-for (int i = 0; i < sounds.Length; i++)
-{
-    if (sounds[i].Name == _Name)
-    {
-sounds[i].Stop(); //選んだ曲があった場合
-return;
-    }
-    else
-    {
-Debug.Log(_Name + "がありません");//なかった場合
-    }
-}
-
-    }
+        if (is_wichFire == false)
+        {
+            yield return new WaitForSeconds(blows_up_to_time);
+            _dragonfire1.SetActive(false);
+            yield return new WaitForSeconds(disappear_until);
+             _dragon1.SetActive(true);   //ドラゴンのオブジェクトを表示させる
+        }
+         else if (is_wichFire == true)
+         {
+            yield return new WaitForSeconds(blows_up_to_time);
+            _dragonfire2.SetActive(false);
+            yield return new WaitForSeconds(disappear_until);
+            _dragon2.SetActive(true);   //ドラゴンのオブジェクトを表示させる
+        }
+        foreach (Transform child in _unit_location.transform)
+        {
+            Destroy(child.gameObject);  //_unit_locationの子をすべて破壊
+        }
+    }  
 }
     </code>
 </pre>
-<img src ="Image/AudioManagerImage.png" 
     </div>
-        <p>Unityにある機能のAudioSourceを使いAudioManagerを作成しました。
-        こだわったところは、Inspector上にBGM、SEを格納して曲ごとのボリュームや、ピッチを変えられるようにしました。
-        名前検索のほうがわかりやすいと思い曲を名前でしていできるようにもしています。</p>
+        <p>ドラゴンの表示と炎を吹く処理を書きました。工夫した点はコルーチンを使用してプログラムの
+            待機時間を作りました。ドラゴンになったとき炎を吹くまでの時間とその炎が消える時間を考慮して作りました。
+        </p>
     </div> 
-    <h3>背景のスクロールと雲の生成</h3>
+    <h3>手札生成とリロード処理</h3>
     <hr>
     <pre class="code C#"><code>
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
-
-public class ScrollManager : MonoBehaviour
+        
+public class CreateCard : MonoBehaviour
 {
-    [SerializeField] private float ScrollSpeed; //スクロールする速さ
-    [SerializeField] Text text;                 //テキスト参照
-    private float time;
-    private int vecY;                           //雲を生成する位置のY座標
-    public GameObject[] Cloud;                    //雲オブジェクト参照
-    public MoveCloud moveCloud;                 //ムーブスクリプト参照
-    public GameManager gameManager;             //ゲームマネージャースクリプト参照
-    // Start is called before the first frame update
-    public void Update()
+    [SerializeField] private Transform PlayerHand;  //場所参照
+    //[SerializeField] private List<GameObject> cards = new List<GameObject>();  //カードリスト作成
+        
+    private void Start()
     {
-        time -= Time.deltaTime;
-        if (time < 0.0f)
-        {
-            vecY = Random.Range(5, 8);
-            int rc = Random.Range(0, 2);
-            Instantiate(Cloud[rc], new Vector3(14, vecY, 10), Quaternion.identity);      //雲生成
-            time = Random.Range(4f, 8f);
-        }
-        text.text = ScoreManager.Score.ToString() + "M";    //メートル表示
-        Scroll();
+        //Create();
     }
     /// <summary>
-    /// 敵生成
+    /// カードを生成する
     /// </summary>
-    public void Scroll()
+    public void Create()
     {
-        transform.Translate(ScrollSpeed * Time.deltaTime, 0, 0);        //背景を動かす
-
-        if (transform.position.x < -1 && !GameManager.gameOver)     //背景が-10より小さくなったら実行
+        
+        int ObjCount = this.transform.childCount;
+        
+        if (ObjCount <= 0)
         {
-            transform.position = new Vector3(0, 0, 0);  //背景を初期位置に戻す
-            ScoreManager.Score += 1;       //スコア加算
-            if (ScoreManager.Score % 100 == 0)  //100で割り切れたら実行
+            for (int i = 0; i <= 4; i++)
             {
-                ScrollSpeed = ScrollSpeed - 0.1f;
-                moveCloud.vecx = moveCloud.vecx - 0.1f;
+                //int num = Random.Range(0, cards.Count); //0からカードのリストの数だけランダムでだす
+                //GameObject.Instantiate(cards[num], PlayerHand);    //カード生成
+            }
+        }
+        else
+        {
+            foreach (Transform n in PlayerHand.transform)   //子にあるオブジェクト全消し
+            {
+                GameObject.Destroy(n.gameObject);
+            }
+            for (int i = 0; i <= 4; i++)
+            {
+                //int num = Random.Range(0, cards.Count); //0からカードのリストの数だけランダムでだす
+                //GameObject.Instantiate(cards[num], PlayerHand);    //カード生成
             }
         }
     }
 }
         </code>
         </pre>
-        <p>背景のスクロールと雲の生成するスクリプトです。
-            スクロールは距離をとるために動かしています、Scrollメソッド内で100メートル毎にスピードが0.1上昇します
-            雲はY座標をランダムにとって生成しています。雲の上限はinspector上で変更可能にしました。</p>
+        <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Reload : MonoBehaviour
+{
+    [SerializeField] CreateCard createCard;
+    public void OnclickButton()
+    {
+        createCard.Create();
+    }
+}
+        </code>
+        </pre>
+        <p>手札生成とリロード処理のスクリプトです。カードを５枚まで生成します。
+            ゲーム画面のリロードボタンを押すとカードがリロールされて新しいカードが生成されます。
+        </p>
   <body>
     <p><a href=".\index.html">トップページへ戻る</a></p>
