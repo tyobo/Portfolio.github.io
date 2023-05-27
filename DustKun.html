@@ -1,36 +1,357 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="utf-8">
     <title>BulletEditor</title>
-    <link rel="stylesheet" href="style.css"/>
-    <link rel="stylesheet" href="https://tyobo.github.io/Portfolio.github.io/vs2015.min.css"/>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://tyobo.github.io/Portfolio.github.io/vs2015.min.css" />
     <script src="https://tyobo.github.io/Portfolio.github.io/highlight.min.js"></script>
     <script>hljs.highlightAll();</script>
-  </head>
-  <div>
+</head>
+<div>
     <h3>概要</h3>
     <hr class="subhr">
-    <p>ジャンル：3Dアクション</p>
-    <p>プレイ人数：1人</p>
-    <p>プラットフォーム：Oculus VR</p>
-    <p>開発環境：2021.2.15f1</p>
-    <p>使用言語：C#</p>
-    <p>開発人数：8人(リーダ１人・プランナー１人・プログラマーリーダー１人・プログラマー４人・2Dデザイナー１人)</p>
+    <p>ジャンル:3Dアクション</p>
+    <p>プレイ人数:1人</p>
+    <p>プラットフォーム:Oculus VR</p>
+    <p>開発環境:2021.2.15f1</p>
+    <p>使用言語:C#</p>
+    <p>開発人数:9人(リーダ1人・プランナー1人・プログラマーリーダー1人・プログラマー2人・3Dデザイナー4人)</p>
     <p>VRゲームを作りたくて挑戦しました。</p>
-      <h3>担当箇所</h3>
-      <hr class="subhr">
-      <h3>説明文</h3>
-      <hr>
+    <h3>担当箇所</h3>
+    <hr class="subhr">
+    <h3>エネミーのアウトライン化</h3>
+    <hr>
     <div>
-      <pre class="code C#"><code>
-        コードを入れる
+        <pre class="code C#"><code>
+Shader "Outline"
+{
+    Properties
+    {
+        _MainTex("Texture", 2D) = "white"{}
+        _OutlineWidth ("Outline Width", float) = 0.1
+        _OutlineColor ("Outline Color", Color) = (1,1,1,1)
+    }
+    SubShader
+    {
+        Tags {"Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent"}
+        Blend SrcAlpha OneMinusSrcAlpha 
+        LOD 200
+
+        CGPROGRAM
+        #pragma surface surf Standard fullforwardshadows
+        #pragma target 2.0  //3.0だと不安定だからwebGlで表示されない可能性があるから古いほうを使おう！！
+
+        struct Input
+        {
+            float2 uv_MainTex;
+        };
+
+        sampler2D _MainTex;
+
+        void surf(Input IN, inout SurfaceOutputStandard o)
+        {
+            o.Albedo = tex2D(_MainTex, IN.uv_MainTex);
+        }
+        ENDCG
+
+        // 2パス目は好きなようにレンダリングする
+        Pass
+        {
+
+            // 前面をカリング
+            Cull Front
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            
+            #include "UnityCG.cginc"
+
+            struct appdata
+            {
+                half4 vertex : POSITION;
+                half3 normal : NORMAL;
+            };
+
+            struct v2f
+            {
+                half4 pos : SV_POSITION;
+            };
+
+            half _OutlineWidth;
+            half4 _OutlineColor;
+            
+            v2f vert (appdata v)
+            {
+                v2f o = (v2f)0;
+
+                // アウトラインの分だけ法線方向に拡大する
+                o.pos = UnityObjectToClipPos(v.vertex + v.normal * _OutlineWidth);
+
+                return o;
+            }
+            
+            fixed4 frag (v2f i) : SV_Target
+            {
+                return _OutlineColor;
+            }
+            ENDCG
+        }
+    }
+}
     </code>
 </pre>
     </div>
+    <image src="Image/DustkunEmemyOutlineImage.png">
         <p>
-          説明文
+            使用変更のため簡単にアウトラインようにシェーダーを書きました。 1層目をテクスチャが張れるようにして
+            元のテクスチャを損なはないようにしました
+            作ったシェーダーはスクリプトからいじれるようにしました。
         </p>
-    </div> 
-  <body>
+</div>
+<h3>エネミー移動処理</h3>
+<hr>
+<div>
+    <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.UIElements;
+using Slider = UnityEngine.UI.Slider;
+
+public class Enemy : MonoBehaviour
+{
+    private Rigidbody rg;
+
+    enum EnemyStatus
+    {
+        Random,
+        notRandom,
+        Practice
+    }
+    public  Slider          slider;
+    public  Transform[]     Point;          //順路のポイントセット
+    public  Transform       TargetPos;      // 目的地となるGameObjectをセット。  
+    public  GameObject      Dustbin;        //Dustbin参照
+    [SerializeField, Header("アニメーションの時間")] 
+    private int             animationTime;  //アニメーションの時間設定
+    [SerializeField, Header("エフェクトの時間")] 
+    private int             effectTime;     //エフェクトの時間設定
+    [SerializeField, Header("ごみの投げる時間")] 
+    private int             throwTime;      //エネミーがごみを投げるまでの時間
+    private int             destPoint   = 0;
+    //private GameObject      enemy;          //エネミーのポジション参照
+    [SerializeField] 
+    private GameObject[]    trash;          //ごみを格納
+    private NavMeshAgent    myAgent;
+    private int             enemyHP     = 100;//エネミーのHP
+    private int             currentHp;        //エネミーの現在のHP
+    [SerializeField]
+    private EnemyStatus s_enemy;
+
+    [SerializeField] private float petProbability = 35;
+    [SerializeField] private float bottleProbability = 23;
+    [SerializeField] private float canProbability = 35;
+    [SerializeField] private float rocketpetProbability = 5;
+    [SerializeField] private float explosionbottleProbability = 2;
+    void Start()
+    {
+        GameManager.gManager.AddEnemy(this.gameObject);
+        rg = GetComponent<Rigidbody>();
+
+        //Sliderを満タンにする。
+        slider.value = 100;
+        //現在のHPを最大HPと同じに。
+        currentHp = enemyHP;
+        if (s_enemy == EnemyStatus.Random || s_enemy == EnemyStatus.notRandom)
+        {
+            StartCoroutine("ThrowTrash");    
+        }
+        // Nav Mesh Agent を取得。
+        myAgent = GetComponent<NavMeshAgent>();
+        //enemy = GameObject.Find("enemy");
+        //enemy = this.gameObject;
+        Dustbin = GameObject.Find("Dustbin");
+        Debug.Log(Dustbin);
+        
+        if(s_enemy == EnemyStatus.notRandom)
+        {
+            // autoBraking を無効にすると、目標地点の間を継続的に移動します
+            //(つまり、エージェントは目標地点に近づいても
+            // 速度をおとしません)
+            myAgent.autoBraking = false;
+
+            GotoNextPoint();
+        }
+    }
+    void Update()
+    {
+        //if(RandomEnemy == true)
+        //{
+        //    // targetに向かって移動。
+        //    myAgent.SetDestination(TargetPos.position);
+        //}
+        //else
+        //{
+        //    // エージェントが現目標地点に近づいてきたら、
+        //    // 次の目標地点を選択します
+        //    if (!myAgent.pathPending && myAgent.remainingDistance < 0.5f)
+        //        GotoNextPoint();
+        //}
+        
+        if(s_enemy == EnemyStatus.Random)
+        {
+            // targetに向かって移動。
+            myAgent.SetDestination(TargetPos.position);
+        }
+        else if (s_enemy == EnemyStatus.notRandom)
+        {
+            if (!myAgent.pathPending && myAgent.remainingDistance < 0.5f) //よくわからない
+                GotoNextPoint();
+        }
+    }
+    void GotoNextPoint()
+    {
+        // 地点がなにも設定されていないときに返します
+        if (Point.Length == 0)
+            return;
+
+        // エージェントが現在設定された目標地点に行くように設定します
+        myAgent.destination = Point[destPoint].position;
+
+        // 配列内の次の位置を目標地点に設定し、
+        // 必要ならば出発地点にもどります
+        destPoint = (destPoint + 1) % Point.Length;
+    }
+
+//ごみを投げる関数
+    private IEnumerator ThrowTrash()
+    {
+        while (true)
+        {
+            //Debug.Log("aaa");
+            yield return new WaitForSeconds(throwTime);
+            var rand = Random.Range(0, petProbability + rocketpetProbability + bottleProbability + 
+                                        explosionbottleProbability + canProbability);
+            if (rand <= explosionbottleProbability)//2%の確率でボンバービン
+            {
+                GameObject obj = (GameObject)Instantiate(trash[0], transform.position+=new Vector3(0,1,0),Quaternion.identity);//オブジェクトを子に生成,
+                obj.transform.parent = Dustbin.transform; 
+            }
+            else if (rand <= rocketpetProbability)//5%の確率でロケットペットボトル
+            {
+                GameObject obj = (GameObject)Instantiate(trash[1], transform.position+=new Vector3(0,1,0),Quaternion.identity);//オブジェクトを子に生成,
+                obj.transform.parent = Dustbin.transform; 
+            }
+            else if (rand <= bottleProbability)//23%の確率でビン
+            {
+                GameObject obj = (GameObject)Instantiate(trash[2], transform.position+=new Vector3(0,1,0),Quaternion.identity);//オブジェクトを子に生成,
+                obj.transform.parent = Dustbin.transform; 
+            }
+            else if (rand <= canProbability)//31%の確率でカン
+            {
+                GameObject obj = (GameObject)Instantiate(trash[3], transform.position+=new Vector3(0,1,0),Quaternion.identity);//オブジェクトを子に生成,
+                obj.transform.parent = Dustbin.transform; 
+            }
+            else if (rand <= petProbability)//35%の確率でペットボトル
+            {
+                GameObject obj = (GameObject)Instantiate(trash[4], transform.position+=new Vector3(0,1,0),Quaternion.identity);//オブジェクトを子に生成,
+                obj.transform.parent = Dustbin.transform; 
+            }
+        }
+    }
+    public void TakeDamage(int Damage)
+    {
+        Debug.Log(Damage);
+        if (s_enemy == EnemyStatus.Random ||s_enemy == EnemyStatus.notRandom)
+        {
+            enemyHP -= Damage;//DamageScriptからダメージを渡されたら発動！！
+            currentHp = enemyHP;
+            slider.value = currentHp;
+            if (currentHp <= 0)
+            {
+                StartCoroutine("EnemyAnimation");
+            }
+        }
+        else if(s_enemy == EnemyStatus.Practice)
+        {
+            //練習用エネミーのダメージ点滅処理
+            enemyHP -= Damage;//DamageScriptからダメージを渡されたら発動！！
+            currentHp = enemyHP;
+            slider.value = currentHp;
+            if (currentHp <= 0)
+            {
+                enemyHP = 100;
+            }
+        }
+
+    }
+    /// <summary>
+    /// アニメーションに使う
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator EnemyAnimation()
+    {
+        //アニメーションの処理
+        yield return new WaitForSeconds(animationTime);
+        GameManager.gManager.DelEnemy(this.gameObject);
+        Destroy(this.gameObject);
+    }
+    /// <summary>
+    ///　エフェクトに使う
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator EnemyEffect()
+    {
+        //エフェクトの処理
+        yield return new WaitForSeconds(effectTime);
+    }
+}
+</code>
+</pre>
+</div>
+<p>
+    NavMeshAgentを使った移動とごみをポイ捨てする処理を書きました。
+    初めてNavMeshAgentを使ったので苦戦しましたが何とか完成させました。
+
+</p>
+</div>
+<h3>ごみの分別処理</h3>
+<hr>
+<div>
+    <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Bun : MonoBehaviour
+{
+    [SerializeField,Tooltip("ごみの種類")] //tooltip カーソルを合わせるとわかるよ
+    private Trash.TrashStatus s_dubin;
+    private void OnCollisionEnter(Collision collision)
+    {
+
+        if(collision.gameObject.tag == "PlayerTrash")
+        {
+            var trash = collision.transform.GetComponent<Trash>();
+            if(s_dubin == trash.GetTrashState())
+            {
+                GameManager.gManager.DelTrash(trash);
+                Destroy(collision.gameObject);
+            }
+        }
+    }
+}
+    </code>
+    </pre>
+</div>
+<p>
+    ごみを分別するスクリプトを書きましたごみのステイタスをもらってきて同じだった場合デストロイする処理です。
+</p>
+</div>
+
+<body>
     <p><a href=".\index.html">トップページへ戻る</a></p>
