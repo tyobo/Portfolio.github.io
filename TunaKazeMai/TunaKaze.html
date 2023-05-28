@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>TunaToKazeToMau</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="https://tyobo.github.io/Portfolio.github.io/vs2015.min.css"/>
+    <script src="https://tyobo.github.io/Portfolio.github.io/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </head>
+  <div>
+      <h3>概要</h3>
+      <hr class="subhr">
+      <p>ジャンル：2D横スクロールアクション</p>
+      <p>プレイ人数：1人</p>
+      <p>プラットフォーム：iPad mini</p>
+      <p>開発環境：2020.2.5f1</p>
+      <p>使用言語：C#</p>
+      <p>開発人数：8人(リーダ１人・プランナー１人・プログラマーリーダー１人・プログラマー４人・2Dデザイナー１人)</p>
+      <p>株式会社ドワンゴ様の企業プロジェクト</p>
+      <h3>担当箇所</h3>
+      <hr class="subhr">
+      <h3>AudioSourceによるAudioManagerの作成</h3>
+      <hr>
+    <div>
+      <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+///<summary>
+///BGMとSEの管理をするマネージャー
+///</summary>
+///
+[System.Serializable]
+public class Sound
+{
+    private AudioSource source;
+    //=================================================================================
+    //オーディオ詳細
+    //=================================================================================
+    public string Name; //オーディオの名前
+    public AudioClip Clip; //オーディオ保管
+    [Range(0f, 1f)] public float Volume = 0.7f; //オーディオのボリューム
+    [Range(0f, 1.5f)] public float Pitch = 1f; //オーディオのピッチ
+
+    [Range(0f, 0.5f)] public float RandomVolume = 0.1f;
+    [Range(0f, 0.5f)] public float RandomPicth = 0.1f;
+
+    public bool loop = false; //ループのチェック
+
+    public void SetSource(AudioSource _source)
+    {
+source = _source;
+source.clip = Clip;
+source.loop = loop;
+    }
+
+    public void Play() //プレイメソッド
+    {
+source.volume = Volume * (1 + Random.Range(-RandomVolume / 2f, RandomVolume / 2f)); //ランダムでボリュームを変える
+source.pitch = Pitch * (1 + Random.Range(-RandomPicth / 2f, RandomPicth / 2f)); //ランダムでピッチを変える
+source.Play();
+    }
+    public void Stop() //ストップメソッド
+    {
+source.Stop();
+    }
+}
+public class AudioManager : MonoBehaviour
+{
+
+    public static AudioManager instance;
+
+    [SerializeField] Sound[] sounds;
+    //=================================================================================
+    //初期化
+    //=================================================================================
+
+    void Awake()
+    {
+if (instance != null)
+{
+    if (instance != this)
+    {
+Destroy(this.gameObject);
+    }
+}
+else
+{
+    instance = this;
+}
+    }
+
+    void Start()
+    {
+//セットサウンドにひとつずつ格納
+for (int i = 0; i < sounds.Length; i++)
+{
+    GameObject _go = new GameObject("Sound_" + i + "_" + sounds[i].Name);
+    sounds[i].SetSource(_go.AddComponent<AudioSource>());
+}
+    }
+    public void PlaySound(string _Name) //プレイサウンドメソッド
+    {
+for (int i = 0; i < sounds.Length; i++)
+{
+    if (sounds[i].Name == _Name)
+    {
+sounds[i].Play(); //選んだ曲があった場合
+return;
+    }
+    else
+    {
+Debug.Log(_Name + "がありません");//なかった場合
+    }
+}
+
+    }
+    public void StopSound(string _Name) //ストップサウンドメソッド
+    {
+for (int i = 0; i < sounds.Length; i++)
+{
+    if (sounds[i].Name == _Name)
+    {
+sounds[i].Stop(); //選んだ曲があった場合
+return;
+    }
+    else
+    {
+Debug.Log(_Name + "がありません");//なかった場合
+    }
+}
+
+    }
+}
+    </code>
+</pre>
+<img src ="Image/AudioManagerImage.png" 
+    </div>
+        <p>Unityにある機能のAudioSourceを使いAudioManagerを作成しました。
+        こだわったところは、Inspector上にBGM、SEを格納して曲ごとのボリュームや、ピッチを変えられるようにしました。
+        名前検索のほうがわかりやすいと思い曲を名前でしていできるようにもしています。</p>
+    </div> 
+    <h3>背景のスクロールと雲の生成</h3>
+    <hr>
+    <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ScrollManager : MonoBehaviour
+{
+    [SerializeField] private float ScrollSpeed; //スクロールする速さ
+    [SerializeField] Text text;                 //テキスト参照
+    private float time;
+    private int vecY;                           //雲を生成する位置のY座標
+    public GameObject[] Cloud;                    //雲オブジェクト参照
+    public MoveCloud moveCloud;                 //ムーブスクリプト参照
+    public GameManager gameManager;             //ゲームマネージャースクリプト参照
+    // Start is called before the first frame update
+    public void Update()
+    {
+        time -= Time.deltaTime;
+        if (time < 0.0f)
+        {
+            vecY = Random.Range(5, 8);
+            int rc = Random.Range(0, 2);
+            Instantiate(Cloud[rc], new Vector3(14, vecY, 10), Quaternion.identity);      //雲生成
+            time = Random.Range(4f, 8f);
+        }
+        text.text = ScoreManager.Score.ToString() + "M";    //メートル表示
+        Scroll();
+    }
+    /// <summary>
+    /// 敵生成
+    /// </summary>
+    public void Scroll()
+    {
+        transform.Translate(ScrollSpeed * Time.deltaTime, 0, 0);        //背景を動かす
+
+        if (transform.position.x < -1 && !GameManager.gameOver)     //背景が-10より小さくなったら実行
+        {
+            transform.position = new Vector3(0, 0, 0);  //背景を初期位置に戻す
+            ScoreManager.Score += 1;       //スコア加算
+            if (ScoreManager.Score % 100 == 0)  //100で割り切れたら実行
+            {
+                ScrollSpeed = ScrollSpeed - 0.1f;
+                moveCloud.vecx = moveCloud.vecx - 0.1f;
+            }
+        }
+    }
+}
+        </code>
+        </pre>
+        <p>背景のスクロールと雲の生成するスクリプトです。
+            スクロールは距離をとるために動かしています、Scrollメソッド内で100メートル毎にスピードが0.1上昇します
+            雲はY座標をランダムにとって生成しています。雲の上限はinspector上で変更可能にしました。</p>
+  <body>
+    <p><a href="/index.html">トップページへ戻る</a></p>

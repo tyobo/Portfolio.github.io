@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>MousouWar</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="https://tyobo.github.io/Portfolio.github.io/vs2015.min.css"/>
+    <script src="https://tyobo.github.io/Portfolio.github.io/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </head>
+  <div>
+      <h3>概要</h3>
+      <hr class="subhr">
+      <p>ジャンル：対戦型タワーディフェンス</p>
+      <p>プレイ人数：2人</p>
+      <p>プラットフォーム：PC</p>
+      <p>開発環境：2020.2.5f1</p>
+      <p>使用言語：C#</p>
+      <p>開発人数：13人(リーダ１人・プランナー3人・プログラマーリーダー１人・プログラマー6人・2Dデザイナー2人)</p>
+      <p>プロジェクト後半でほとんど出来てないチームに入り完成まで持っていきました。</p>
+      <h3>担当箇所</h3>
+      <hr class="subhr">
+      <h3>城からドラゴンに変身させる処理と炎を出す処理</h3>
+      <hr>
+    <div>
+      <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class ChangeDragon : MonoBehaviour
+{
+    [SerializeField] GameObject _dragon1;
+    [SerializeField] GameObject _dragon2;
+    [SerializeField] GameObject _unit_location;
+    [SerializeField] GameObject _dragonfire1;
+    [SerializeField] GameObject _dragonfire2;
+    [Header("召喚されるまでの/秒")]
+    public float blows_up_to_time;
+    [Header("火が消える時間/秒")]
+    public float disappear_until;
+    bool is_wichFire = false;
+        
+    public void SummonDragon1()
+    {
+        is_wichFire = false;        //SummonDragon1が呼ばれたらfalseにする
+        StartCoroutine("Dragon");   
+                
+    }
+        
+    public void SummonDragon2()
+    {
+        is_wichFire = true;
+        StartCoroutine("Dragon");
+    }
+        
+    private IEnumerator Dragon()
+    {
+        if (is_wichFire == false)
+        {
+            yield return new WaitForSeconds(blows_up_to_time);
+            _dragonfire1.SetActive(false);
+            yield return new WaitForSeconds(disappear_until);
+             _dragon1.SetActive(true);   //ドラゴンのオブジェクトを表示させる
+        }
+         else if (is_wichFire == true)
+         {
+            yield return new WaitForSeconds(blows_up_to_time);
+            _dragonfire2.SetActive(false);
+            yield return new WaitForSeconds(disappear_until);
+            _dragon2.SetActive(true);   //ドラゴンのオブジェクトを表示させる
+        }
+        foreach (Transform child in _unit_location.transform)
+        {
+            Destroy(child.gameObject);  //_unit_locationの子をすべて破壊
+        }
+    }  
+}
+    </code>
+</pre>
+    </div>
+        <p>ドラゴンの表示と炎を吹く処理を書きました。工夫した点はコルーチンを使用してプログラムの
+            待機時間を作りました。ドラゴンになったとき炎を吹くまでの時間とその炎が消える時間を考慮して作りました。
+        </p>
+    </div> 
+    <h3>手札生成とリロード処理</h3>
+    <hr>
+    <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+        
+public class CreateCard : MonoBehaviour
+{
+    [SerializeField] private Transform PlayerHand;  //場所参照
+    //[SerializeField] private List<GameObject> cards = new List<GameObject>();  //カードリスト作成
+        
+    private void Start()
+    {
+        //Create();
+    }
+    /// <summary>
+    /// カードを生成する
+    /// </summary>
+    public void Create()
+    {
+        
+        int ObjCount = this.transform.childCount;
+        
+        if (ObjCount <= 0)
+        {
+            for (int i = 0; i <= 4; i++)
+            {
+                //int num = Random.Range(0, cards.Count); //0からカードのリストの数だけランダムでだす
+                //GameObject.Instantiate(cards[num], PlayerHand);    //カード生成
+            }
+        }
+        else
+        {
+            foreach (Transform n in PlayerHand.transform)   //子にあるオブジェクト全消し
+            {
+                GameObject.Destroy(n.gameObject);
+            }
+            for (int i = 0; i <= 4; i++)
+            {
+                //int num = Random.Range(0, cards.Count); //0からカードのリストの数だけランダムでだす
+                //GameObject.Instantiate(cards[num], PlayerHand);    //カード生成
+            }
+        }
+    }
+}
+        </code>
+        </pre>
+        <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Reload : MonoBehaviour
+{
+    [SerializeField] CreateCard createCard;
+    public void OnclickButton()
+    {
+        createCard.Create();
+    }
+}
+        </code>
+        </pre>
+        <p>手札生成とリロード処理のスクリプトです。カードを５枚まで生成します。
+            ゲーム画面のリロードボタンを押すとカードがリロールされて新しいカードが生成されます。
+        </p>
+  <body>
+    <p><a href="/index.html">トップページへ戻る</a></p>
