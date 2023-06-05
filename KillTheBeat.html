@@ -15,24 +15,443 @@
     <p>ジャンル：リズムゲーム×ファーストパーソン・シューティングゲーム</p>
     <p>プレイ人数：1人</p>
     <p>プラットフォーム：PC</p>
-    <p>開発環境：2020.2.5f1</p>
+    <p>開発環境：2021.2.5f1</p>
     <p>使用言語：C#</p>
-    <p>開発人数：13人(リーダ１人・プランナー3人・プログラマーリーダー１人・プログラマー6人・2Dデザイナー2人)</p>
-    <p>プロジェクト後半でほとんど出来てないチームに入り完成まで持っていきました。</p>
+    <p>開発人数：9人(リーダ/プランナー１人・プログラマーリーダー1人・プログラマー5人・デザイナー2人)</p>
+    <p>音ゲー×FPSゲームという新しジャンルのゲームを作ってみたくて挑戦しました。
+        このゲームの面白いところはリズムに乗って銃を撃ち、敵を倒した時の爽快感や敵を敵を倒していくとエフェクトやSEが派手なっていくところです。
+    </p>
     <h3>担当箇所</h3>
     <hr class="subhr">
-    <h3>説明文</h3>
+    <h3>CSVから数値を読み込みList化</h3>
     <hr>
     <div>
         <pre class="code C#"><code>
-        コードを入れる
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Ex : MonoBehaviour
+{
+    [SerializeField] private TextAsset textAsset;
+    [System.Serializable]
+    public class GunDmageClass
+    {
+        public string color;
+        public int Legdamage;
+        public int Bodydamage;
+        public int Headdamage;
+    }
+
+    public GunDmageClass[] gunDamage;
+
+    public void Start()
+    {
+        ReadCSV();
+    }
+    public void ReadCSV()
+    {
+        string[] data = textAsset.text.Split(new string[] { ",", "\n" }, System.StringSplitOptions.None);   //カンマ区切りにしてdataに代入
+        int tableSize = data.Length / 4 - 1;//dataのlengthを/4-1をして範囲指定
+        gunDamage = new GunDmageClass[tableSize];   //gundamageにサイズをぶち込む
+        for (int i = 0; i < tableSize; i++)
+        {
+            gunDamage[i] = new GunDmageClass();
+            gunDamage[i].color = data[4 * (i + 1)];
+            gunDamage[i].Legdamage = int.Parse(data[4 * (i + 1) + 1]);
+            gunDamage[i].Bodydamage = int.Parse(data[4 * (i + 1) + 2]);
+            gunDamage[i].Headdamage = int.Parse(data[4 * (i + 1) + 3]);
+
+        }
+    }
+}
     </code>
 </pre>
     </div>
+    <img src="Image/KillTheBeatGunDamageExcel.png" width="400">
+    <img src="Image/KillTheBeatGunDamgeList.png" width="250">
     <p>
-        説明文
+        プランナーが数値を変えやすいようにCSVファイルからListにして攻撃力を変動させました。
     </p>
 </div>
+      <h3>プレイヤーの動きと視点移動</h3>
+      <hr>
+    <div>
+      <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEngine;
+using UniRx;
 
+public class N_Player : MonoBehaviour
+{
+    [SerializeField, Header("プレイヤーの移動スピード")]
+    private float _playerMoveSpeed; //プレイヤーのスピード
+
+    [SerializeField, Header("プレイヤーのジャンプ力")]
+    private float _jumpPower; //プレイヤーのジャンプ力
+
+    [SerializeField, Header("ジャンプしたときのスピード")]
+    private float _speedDown; //ジャンプしたときのスピードダウン
+
+    [SerializeField, Header("重力")]
+    private int downGravity;
+
+    [SerializeField, Header("X軸の感度")]
+    private float SensX = 1;
+
+    [SerializeField, Header("Y軸の感度")]
+    private float SensY = 1;
+
+    [SerializeField]
+    private float _currentSpeed; //今のスピードを保存するだけ
+
+    public bool IsGround { private set; get; }
+    
+    private float minX = -70, maxX = 50; //角度の上下の制限変数
+    private Quaternion _cameraRot, _characterRot, _modelRot; //回転を取得するためにQuaternion型
+
+    [HideInInspector] public Rigidbody _rg; //Rigidbody参照
+    private N_PlayerManager _playerManager; //PlayerManager参照
+
+    private void Awake()
+    {
+        _rg = GetComponent<Rigidbody>();
+        _playerManager = GetComponent<N_PlayerManager>();
+        _currentSpeed = _playerMoveSpeed;
+        _cameraRot = Camera.main.transform.localRotation; //カメラの角度を取得
+        _characterRot = transform.localRotation; //プレイヤーの角度を取得
+        _modelRot = transform.localRotation;
+    }
+    private void Start()
+    {
+        OptionManager.instance.OP_Mouse.Subscribe(x => { SensX = x; SensY = x; }).AddTo(this);
+    }
+    private void FixedUpdate()
+    {
+        Fall();
+    }
+
+    #region プレイヤー移動&ジャンプ処理&視点移動
+
+    /// <summary>
+    /// プレイヤーの移動関数
+    /// </summary>
+    /// <param name="z">左右</param>
+    /// <param name="x">前後</param>
+    public void Move(float inputHorizontal, float inputVertical)
+    {
+        // カメラの方向から、X-Z平面の単位ベクトルを取得
+        Vector3 cameraForward = Vector3.Scale(Camera.main.transform.forward, new Vector3(1, 0, 1)).normalized;
+
+        // 方向キーの入力値とカメラの向きから、移動方向を決定
+        Vector3 moveForward = cameraForward * inputVertical + Camera.main.transform.right * inputHorizontal;
+
+        // 移動方向にスピードを掛ける。ジャンプや落下がある場合は、別途Y軸方向の速度ベクトルを足す。
+        _rg.velocity = moveForward.normalized * _currentSpeed + new Vector3(0, _rg.velocity.y, 0);
+
+    }
+
+    /// <summary>s
+    /// マウスのfpsカメラ移動
+    /// </summary>
+    /// <param name="RoateX">横軸</paramk
+    /// <param name="RoateY">縦軸</param>
+    public void Viewpoint(float RoateX, float RoateY)
+    {
+        //RoateX = RoateX * SensX;
+        //RoateY = RoateY * SensY;
+        _cameraRot *= Quaternion.Euler(-RoateY * SensY, 0, 0);
+
+        _characterRot *= Quaternion.Euler(0, RoateX * SensX, 0);
+
+        _modelRot *= Quaternion.Euler(-RoateY * SensY, 0, 0);
+        _modelRot = ClamRotation(_modelRot);
+        Camera.main.transform.localRotation = _modelRot;
+
+        _cameraRot = ClamRotation(_cameraRot);
+        Camera.main.transform.localRotation = _cameraRot; //カメラの角度を更新
+        transform.localRotation = _characterRot; //キャラクターの角度を更新
+    }
+
+
+    public void Jump()
+    {
+        var vel = _rg.velocity;
+        vel.y += _jumpPower;
+        _rg.velocity = vel;
+        //_rg.AddForce(transform.up * _jumpPower,ForceMode.Force);
+        _currentSpeed = _playerMoveSpeed / _speedDown;
+    }
+
+    /// <summary>
+    /// ジャンプの終了関数
+    /// </summary>
+    public void Fall()
+    {
+        var vel = _rg.velocity;
+        vel.y -= downGravity;
+        _rg.velocity = vel;
+        //_rg.AddForce(new Vec tor3(0, -downGravity, 0), ForceMode.Impulse);
+    }
+
+    #endregion
+
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Grounds"))
+        {
+            IsGround = true;
+            _currentSpeed = _playerMoveSpeed;
+            _playerManager.DelJumpFlag();
+        }
+    }
+
+    private void OnCollisionExit(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Grounds"))
+        {
+            IsGround = false;
+        }
+    }
+
+    /// <summary>
+    /// 角度制限関数
+    /// </summary>
+    /// <param name="カメラの縦軸の角度"></param>
+    /// <returns>Quaternion</returns>
+    public Quaternion ClamRotation(Quaternion Vertical)
+    {
+        //Vertical = x,y,z,w(x,y,zはベクトル（量と向き）:wはスカラー(座標とは無関係の量:回転する))
+        Vertical.x /= Vertical.w; //xをwで割る
+        Vertical.y /= Vertical.w; //yをwで割る
+        Vertical.z /= Vertical.w; //zをwで割る
+        Vertical.w = 1f; //wが1の時は3次元の座標と4次元のQuaternionの座標を同じにする
+
+        float angleX = Mathf.Atan(Vertical.x) * Mathf.Rad2Deg * 2f;
+
+        angleX = Mathf.Clamp(angleX, minX, maxX); // valueがmaxXより上だった場合valueまで下げる
+
+        Vertical.x = Mathf.Tan(angleX * Mathf.Deg2Rad * 0.5f);
+        return Vertical;
+    }
+
+}
+    </code>
+</pre>
+    </div>
+        <p>
+          Move関数でプレイヤーを動かしています。カメラの向いている方向に対して計算をしてWキーが常に前に行くようにしました。
+          視点移動もマウスを動かうことで計算をして回転軸に代入しました。
+        </p>
+        <p>ほとんどのものが関数化しており引数が必要だと思ったやつはつけてきれいに書く意識をしました。</p>
+    </div> 
+      <h3>プレイヤーマネージャーの作成</h3>
+      <hr>
+    <div>
+      <pre class="code C#"><code>
+using Knife.Effects;
+using System;
+using UnityEngine;
+
+public enum HitStatus
+{
+    None,
+    Head,
+    Body,
+    Leg
+}
+public class N_PlayerManager : MonoBehaviour
+{
+    #region Flag
+    [Flags]
+    enum PlayerStatus
+    {
+        Idle = 0x000,   //待ち状態
+        Walk = 0x001,   //歩く
+        Jump = 0x002,   //ジャンプ
+        Attack = 0x004, //アタック
+    }
+    #endregion
+    private N_Player playerScript;
+    [SerializeField] private PlayerStatus _playerStatus;
+    [SerializeField] private N_Gun gunScript;
+    [SerializeField] private GameObject pistole;
+    [SerializeField] private PlayerView playerView;
+    [SerializeField] private Combotest comboTextView;
+    private GunView gunView;
+    private bool isHold = false;
+    /// <summary>
+    /// ノーツ判定用
+    /// </summary>
+    [SerializeField] private NotesJudge notesJudge;
+    private void Awake()
+    {
+        //ScoreManager.instance.Score.Subscribe(x => Debug.Log(x));
+        playerScript = GetComponent<N_Player>();
+        gunScript = pistole.GetComponent<N_Gun>();
+        gunView = pistole.GetComponent<GunView>();
+    }
+
+    private void Update()
+    {
+
+        if (Input.GetKeyDown(KeyCode.H))
+        {
+            gunView.GravityEffectStopFX();
+        }
+        if (!GameManager.instance.IsPause)
+        {
+            #region 入力処理
+
+            if (Input.GetAxisRaw("Horizontal") != 0 || Input.GetAxisRaw("Vertical") != 0)
+            {
+                AddWalkFlag();
+            }
+            else
+            {
+                playerScript._rg.velocity = new Vector3(0, playerScript._rg.velocity.y, 0);
+                DelWalkFlag();
+            }
+
+            playerScript.Viewpoint(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
+
+            //現在のステータスにジャンプフラグが立っていない場合
+            //HasFlagは今のステータスにかっこの中のステータスが立っていたら
+            if (Input.GetKeyDown(KeyCode.Space) && !_playerStatus.HasFlag(PlayerStatus.Jump) && playerScript.IsGround == true)
+            {
+                playerScript.Jump();
+                AddJumpFlag();
+            }
+
+            if (playerScript.IsGround == true && _playerStatus.HasFlag(PlayerStatus.Jump))
+            {
+                DelJumpFlag();
+            }
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                // 判定を構造体として、取得＆格納
+                NoteJugeIndex noteJugeIndex = notesJudge.NowNotes_Judge();
+                if (noteJugeIndex == null)
+                {
+                    return;
+                }
+                if (noteJugeIndex.noteType == (int)NoteType.Tap && noteJugeIndex.jugeType == (int)NotesJudgeType.nice)
+                {
+                    gunView.ChangeThePistolEffect(PlayerGauge.instance.CullentGaugeColor.Value);
+
+                    playerView.ShootingView();
+                    if (gunScript.Shooting() != HitStatus.None)
+                    {
+                        ScoreManager.instance.AddScoreForEnemyHit(PlayerGauge.instance.CullentGaugeColor.Value, gunScript._hitStatus);
+                        comboTextView.ComboAttend(gunScript.HitInfo.point,gunScript._hitStatus);
+                    }
+                }
+                else if (noteJugeIndex.noteType == (int)NoteType.Hold && noteJugeIndex.jugeType == (int)NotesJudgeType.nice)
+                {
+                    //成功時k
+                    //bool成功のやつ
+                    isHold = true;
+                }
+                if (noteJugeIndex.jugeType == (int)NotesJudgeType.miss)
+                {
+                    PlayerGauge.instance.DownGauge();
+                    ComboSystem.instance.ResetCombo();
+                }
+            }
+            if (Input.GetMouseButton(0) && isHold == true)    //長押し
+            {
+                gunView.GravityEffectPlayFX();
+            }
+            if (Input.GetMouseButtonUp(0) && isHold == true)
+            {
+                isHold = false;
+                NoteJugeIndex noteJugeIndex = notesJudge.NowNotes_Judge();
+                if (noteJugeIndex.noteType == (int)NoteType.Hold && noteJugeIndex.jugeType == (int)NotesJudgeType.nice)
+                {
+                    gunView.GravityEffectStopFX();
+                    if (noteJugeIndex.jugeType == (int)NotesJudgeType.miss)
+                    {
+                        PlayerGauge.instance.DownGauge();
+                        ComboSystem.instance.ResetCombo();
+                    }
+
+                }
+            }
+            #endregion
+        }
+    }
+    #region フラグの追加と消去
+
+    public void AddWalkFlag()
+    {
+        //今現在のステータス とwalkの0001のステータスがorで掛けてフラグを立てる
+        //どっちかが1立っていたら1を立てる
+        //0000 |0001 = 0001
+        //左から一個づつ比較している
+        _playerStatus |= PlayerStatus.Walk; //フラグの追加
+    }
+
+    public void DelWalkFlag()
+    {
+        //今現在のステータスをwalkの1110 &をかけてフラグを消してる
+        //ANDは両方に1が立ったら結果に1が立つ
+        //0001 & 1111 =1111
+
+        _playerStatus &= ~PlayerStatus.Walk;
+    }
+
+    public void AddJumpFlag()
+    {
+        _playerStatus |= PlayerStatus.Jump;
+    }
+
+    public void DelJumpFlag()
+    {
+        _playerStatus &= ~PlayerStatus.Jump;
+    }
+
+    public void AddAttackFlag()
+    {
+        _playerStatus |= PlayerStatus.Attack;
+    }
+
+    public void DelAttackFlag()
+    {
+        _playerStatus &= ~PlayerStatus.Attack;
+    }
+
+    #endregion
+
+    private void FixedUpdate()
+    {
+        if (_playerStatus.HasFlag(PlayerStatus.Walk))
+        {
+            playerScript.Move(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+        }
+    }
+
+
+
+    public void TakeDamage(int value)
+    {
+        //ゲージの減少
+        PlayerGauge.instance.DownGauge();
+        //スコアの減少
+        ScoreManager.instance.SubScore(value);
+    }
+}
+    </code>
+</pre>
+    </div>
+        <p>
+          プレイヤーの入力や他の物を参照するときはプレイヤーマネージャーを介して行っていました。
+          プレイヤーのステータス管理で16進数で計算を行いジャンプ攻撃といった複数のステータス管理を行えるようにしました。
+
+        </p>
+    </div> 
 <body>
     <p><a href=".\index.html">トップページへ戻る</a></p>
