@@ -16,20 +16,139 @@
     <p>プラットフォーム：PC</p>
     <p>開発環境：2020.2.5f1</p>
     <p>使用言語：C#</p>
-    <p>開発人数：13人(リーダ１人・プランナー3人・プログラマーリーダー１人・プログラマー6人・2Dデザイナー2人)</p>
-    <p>プロジェクト後半でほとんど出来てないチームに入り完成まで持っていきました。</p>
+    <p>開発人数：10人(プログラマー10人)</p>
+    <p>授業内でハッカソンを行いました。お題が「ながい」でした。その時人気だったVampire Survivorsをオマージュをして幼女が敵をなぎ倒していくゲームをつくりました。幼女の武器が長くなるように作りました。</p>
       <h3>担当箇所</h3>
       <hr class="subhr">
-      <h3>説明文</h3>
+      <h3>オブジェクトプール作成</h3>
       <hr>
     <div>
       <pre class="code C#"><code>
-        コードを入れる
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UniRx;
+using Unity.Mathematics;
+using Unity.VisualScripting;
+using UnityEngine;
+using Random = UnityEngine.Random;
+
+public class EnemySpawn : MonoBehaviour
+{
+    [SerializeField] private float spawnTime = 2;
+    [SerializeField] private int maxSpawn;
+    [SerializeField] private float moreEnemyTime;
+    [SerializeField, Header("生成する敵")] List<GameObject> enemy = new List<GameObject>();
+    [SerializeField, Header("生成場所")] private List<float> spawnPosition = new List<float>();
+    private Transform enemyStorege;
+    private Vector3 enemyPositionUpDown;
+    private Vector3 enemyPositionHorizontal;
+
+    private void Start()
+    {
+        enemyStorege = new GameObject("enmey").transform;
+        StartCoroutine(Spawn());
+        //StartCoroutine(MoreSpawn(moreEnemyTime));
+
+        PlayerController.Instance.Level.Subscribe(x => {
+            if (maxSpawn <= 80)
+            {
+                maxSpawn += 1;
+            }
+            }
+        );
+    }
+
+    private void InsEnemy(Vector3 pos, Quaternion rotation)
+    {
+        foreach (Transform t in enemyStorege.transform)
+        {
+            if (!t.gameObject.activeSelf)
+            {
+                t.SetPositionAndRotation(pos, rotation);
+                t.gameObject.SetActive(true);
+                //Debug.Log("アクティブにしたよ");
+                return;
+            }
+        }
+        Instantiate(enemy[Random.Range(0, enemy.Count)], pos, rotation, enemyStorege);
+    }
+
+    IEnumerator MoreSpawn(float enemyplus)
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(enemyplus);
+            maxSpawn += 10;
+        }
+    }
+
+    IEnumerator Spawn()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(spawnTime);
+            Debug.Log("2秒たったよ");
+            for (int i = 0; i < maxSpawn; i++)
+            {
+                enemyPositionUpDown = Camera.main.ViewportToWorldPoint(new Vector3(Random.Range(-0.1f, 1.1f), spawnPosition[Random.Range(0, spawnPosition.Count)], Camera.main.nearClipPlane));
+                enemyPositionUpDown.z = 0;
+                InsEnemy(enemyPositionUpDown, Quaternion.identity);
+                enemyPositionHorizontal = Camera.main.ViewportToWorldPoint(new Vector3(spawnPosition[Random.Range(0, spawnPosition.Count)], Random.Range(-0.1f, 1.1f), Camera.main.nearClipPlane));
+                enemyPositionHorizontal.z = 0;
+                InsEnemy(enemyPositionHorizontal, Quaternion.identity);
+            }
+        }
+    }
+}
     </code>
 </pre>
     </div>
         <p>
-          説明文
+          敵がいっぱい出てくるゲームなのでいちいち生成しているゲームが重くなってしまいプレイできないのでオブジェクトプール
+          を作りあらかじめいくつか生成をしてそれを使いまわしてゲームを軽くしました。
+        </p>
+    </div> 
+      <h3>カメラ外に出たときの処理</h3>
+      <hr>
+    <div>
+      <pre class="code C#"><code>
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class CameraInOut : MonoBehaviour
+{
+    public bool isIn = false;
+    private EnemySpawn _enemySpawn;  
+    public GameObject EnemyManger;
+    private void Start()
+    {
+        EnemyManger = GameObject.Find("SpawnManager");
+        _enemySpawn = EnemyManger.GetComponent<EnemySpawn>();
+    }
+
+    private void OnBecameVisible()
+    {
+        //表示された時の処理
+        isIn = true;
+    }
+
+    private void OnBecameInvisible()
+    {
+        //表示されないときの処理
+        if (isIn == true)
+        {
+            gameObject.SetActive(false);
+        }
+    }
+}
+    </code>
+</pre>
+    </div>
+        <p>
+          敵がカメラ外に出たときにオブジェクト非表示にしています。
         </p>
     </div> 
   <body>
