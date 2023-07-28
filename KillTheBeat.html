@@ -45,11 +45,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Ex : MonoBehaviour
+public class ReadCSVScript : MonoBehaviour
 {
-    [SerializeField] private TextAsset textAsset;
+    [SerializeField] private TextAsset textAsset;// CSVファイルをアタッチするための変数
     [System.Serializable]
-    public class GunDmageClass
+    public class GunDmageClass  // GunDmageClassというデータクラスの定義
     {
         public string color;
         public int Legdamage;
@@ -57,7 +57,7 @@ public class Ex : MonoBehaviour
         public int Headdamage;
     }
 
-    public GunDmageClass[] gunDamage;
+    public GunDmageClass[] gunDamage;// CSVから読み込んだデータを格納するための配列
 
     public void Start()
     {
@@ -65,12 +65,13 @@ public class Ex : MonoBehaviour
     }
     public void ReadCSV()
     {
-        string[] data = textAsset.text.Split(new string[] { ",", "\n" }, System.StringSplitOptions.None);   //カンマ区切りにしてdataに代入
-        int tableSize = data.Length / 4 - 1;//dataのlengthを/4-1をして範囲指定
-        gunDamage = new GunDmageClass[tableSize];   //gundamageにサイズをぶち込む
+        string[] data = textAsset.text.Split(new string[] { ",", "\n" }, System.StringSplitOptions.None);   // CSVファイルの内容をカンマと改行で分割してdata配列に格納
+        int tableSize = data.Length / 4 - 1;// データの行数を計算（1行目はヘッダなので除外）
+        gunDamage = new GunDmageClass[tableSize];   // gunDamageの配列を必要なサイズで初期化
         for (int i = 0; i < tableSize; i++)
         {
-            gunDamage[i] = new GunDmageClass();
+            gunDamage[i] = new GunDmageClass(); // 各要素にGunDmageClassのインスタンスを作成して格納
+            // data配列から各情報をパースしてgunDamageクラスの各フィールドに格納
             gunDamage[i].color = data[4 * (i + 1)];
             gunDamage[i].Legdamage = int.Parse(data[4 * (i + 1) + 1]);
             gunDamage[i].Bodydamage = int.Parse(data[4 * (i + 1) + 2]);
@@ -79,6 +80,7 @@ public class Ex : MonoBehaviour
         }
     }
 }
+            
     </code>
 </pre>
     </div>
@@ -101,50 +103,52 @@ using UniRx;
 public class N_Player : MonoBehaviour
 {
     [SerializeField, Header("プレイヤーの移動スピード")]
-    private float _playerMoveSpeed; //プレイヤーのスピード
+    private float _playerMoveSpeed; // プレイヤーの移動スピード
 
     [SerializeField, Header("プレイヤーのジャンプ力")]
-    private float _jumpPower; //プレイヤーのジャンプ力
+    private float _jumpPower; // プレイヤーのジャンプ力
 
     [SerializeField, Header("ジャンプしたときのスピード")]
-    private float _speedDown; //ジャンプしたときのスピードダウン
+    private float _speedDown; // ジャンプしたときのスピードダウン
 
     [SerializeField, Header("重力")]
-    private int downGravity;
+    private int downGravity; // 重力
 
     [SerializeField, Header("X軸の感度")]
-    private float SensX = 1;
+    private float SensX = 1; // X軸の感度
 
     [SerializeField, Header("Y軸の感度")]
-    private float SensY = 1;
+    private float SensY = 1; // Y軸の感度
 
     [SerializeField]
-    private float _currentSpeed; //今のスピードを保存するだけ
+    private float _currentSpeed; // 現在のスピードを保存する変数
 
-    public bool IsGround { private set; get; }
-    
-    private float minX = -70, maxX = 50; //角度の上下の制限変数
-    private Quaternion _cameraRot, _characterRot, _modelRot; //回転を取得するためにQuaternion型
+    public bool IsGround { private set; get; } // 地面に接触しているかを示すフラグ
 
-    [HideInInspector] public Rigidbody _rg; //Rigidbody参照
-    private N_PlayerManager _playerManager; //PlayerManager参照
+    private float minX = -70, maxX = 50; // 角度の上下の制限変数
+    private Quaternion _cameraRot, _characterRot, _modelRot; // 回転を取得するためのQuaternion型
+
+    [HideInInspector] public Rigidbody _rg; // Rigidbody参照
+    private N_PlayerManager _playerManager; // PlayerManager参照
 
     private void Awake()
     {
         _rg = GetComponent<Rigidbody>();
         _playerManager = GetComponent<N_PlayerManager>();
         _currentSpeed = _playerMoveSpeed;
-        _cameraRot = Camera.main.transform.localRotation; //カメラの角度を取得
-        _characterRot = transform.localRotation; //プレイヤーの角度を取得
+        _cameraRot = Camera.main.transform.localRotation; // カメラの角度を取得
+        _characterRot = transform.localRotation; // プレイヤーの角度を取得
         _modelRot = transform.localRotation;
     }
+
     private void Start()
     {
         OptionManager.instance.OP_Mouse.Subscribe(x => { SensX = x; SensY = x; }).AddTo(this);
     }
+
     private void FixedUpdate()
     {
-        Fall();
+        Fall(); // 落下処理
     }
 
     #region プレイヤー移動&ジャンプ処理&視点移動
@@ -152,8 +156,8 @@ public class N_Player : MonoBehaviour
     /// <summary>
     /// プレイヤーの移動関数
     /// </summary>
-    /// <param name="z">左右</param>
-    /// <param name="x">前後</param>
+    /// <param name="inputHorizontal">左右の入力値</param>
+    /// <param name="inputVertical">前後の入力値</param>
     public void Move(float inputHorizontal, float inputVertical)
     {
         // カメラの方向から、X-Z平面の単位ベクトルを取得
@@ -167,29 +171,33 @@ public class N_Player : MonoBehaviour
 
     }
 
-    /// <summary>s
+    /// <summary>
     /// マウスのfpsカメラ移動
     /// </summary>
-    /// <param name="RoateX">横軸</paramk
-    /// <param name="RoateY">縦軸</param>
+    /// <param name="RoateX">横軸の入力値</param>
+    /// <param name="RoateY">縦軸の入力値</param>
     public void Viewpoint(float RoateX, float RoateY)
     {
-        //RoateX = RoateX * SensX;
-        //RoateY = RoateY * SensY;
+        // カメラの回転を更新
         _cameraRot *= Quaternion.Euler(-RoateY * SensY, 0, 0);
 
+        // キャラクターの回転を更新
         _characterRot *= Quaternion.Euler(0, RoateX * SensX, 0);
 
+        // モデルの回転を更新
         _modelRot *= Quaternion.Euler(-RoateY * SensY, 0, 0);
         _modelRot = ClamRotation(_modelRot);
         Camera.main.transform.localRotation = _modelRot;
 
+        // カメラの角度を制限
         _cameraRot = ClamRotation(_cameraRot);
-        Camera.main.transform.localRotation = _cameraRot; //カメラの角度を更新
-        transform.localRotation = _characterRot; //キャラクターの角度を更新
+        Camera.main.transform.localRotation = _cameraRot; // カメラの角度を更新
+        transform.localRotation = _characterRot; // キャラクターの角度を更新
     }
 
-
+    /// <summary>
+    /// ジャンプ処理
+    /// </summary>
     public void Jump()
     {
         var vel = _rg.velocity;
@@ -200,18 +208,17 @@ public class N_Player : MonoBehaviour
     }
 
     /// <summary>
-    /// ジャンプの終了関数
+    /// ジャンプ終了処理
     /// </summary>
     public void Fall()
     {
         var vel = _rg.velocity;
         vel.y -= downGravity;
         _rg.velocity = vel;
-        //_rg.AddForce(new Vec tor3(0, -downGravity, 0), ForceMode.Impulse);
+        //_rg.AddForce(new Vector3(0, -downGravity, 0), ForceMode.Impulse);
     }
 
     #endregion
-
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -234,19 +241,19 @@ public class N_Player : MonoBehaviour
     /// <summary>
     /// 角度制限関数
     /// </summary>
-    /// <param name="カメラの縦軸の角度"></param>
+    /// <param name="Vertical">カメラの縦軸の角度</param>
     /// <returns>Quaternion</returns>
     public Quaternion ClamRotation(Quaternion Vertical)
     {
-        //Vertical = x,y,z,w(x,y,zはベクトル（量と向き）:wはスカラー(座標とは無関係の量:回転する))
-        Vertical.x /= Vertical.w; //xをwで割る
-        Vertical.y /= Vertical.w; //yをwで割る
-        Vertical.z /= Vertical.w; //zをwで割る
-        Vertical.w = 1f; //wが1の時は3次元の座標と4次元のQuaternionの座標を同じにする
+        //Vertical = x,y,z,w (x,y,zはベクトル（量と向き）:wはスカラー(座標とは無関係の量:回転する))
+        Vertical.x /= Vertical.w; // xをwで割る
+        Vertical.y /= Vertical.w; // yをwで割る
+        Vertical.z /= Vertical.w; // zをwで割る
+        Vertical.w = 1f; // wが1の時は3次元の座標と4次元のQuaternionの座標を同じにする
 
         float angleX = Mathf.Atan(Vertical.x) * Mathf.Rad2Deg * 2f;
 
-        angleX = Mathf.Clamp(angleX, minX, maxX); // valueがmaxXより上だった場合valueまで下げる
+        angleX = Mathf.Clamp(angleX, minX, maxX); // valueがmaxXより上だった場合、valueまで下げる
 
         Vertical.x = Mathf.Tan(angleX * Mathf.Deg2Rad * 0.5f);
         return Vertical;
@@ -269,7 +276,7 @@ public class N_Player : MonoBehaviour
 using Knife.Effects;
 using System;
 using UnityEngine;
-
+// ヒット判定の列挙型
 public enum HitStatus
 {
     None,
@@ -277,187 +284,179 @@ public enum HitStatus
     Body,
     Leg
 }
+
+// プレイヤーの状態フラグの列挙型
+[Flags]
+enum PlayerStatus
+{
+    Idle = 0x000,   // 待ち状態
+    Walk = 0x001,   // 歩く
+    Jump = 0x002,   // ジャンプ
+    Attack = 0x004, // アタック
+}
+
 public class N_PlayerManager : MonoBehaviour
 {
-    #region Flag
-    [Flags]
-    enum PlayerStatus
-    {
-        Idle = 0x000,   //待ち状態
-        Walk = 0x001,   //歩く
-        Jump = 0x002,   //ジャンプ
-        Attack = 0x004, //アタック
-    }
-    #endregion
-    private N_Player playerScript;
-    [SerializeField] private PlayerStatus _playerStatus;
-    [SerializeField] private N_Gun gunScript;
-    [SerializeField] private GameObject pistole;
-    [SerializeField] private PlayerView playerView;
-    [SerializeField] private Combotest comboTextView;
-    private GunView gunView;
-    private bool isHold = false;
-    /// <summary>
-    /// ノーツ判定用
-    /// </summary>
-    [SerializeField] private NotesJudge notesJudge;
+    private N_Player playerScript; // N_Playerクラスのスクリプト参照
+    [SerializeField] private PlayerStatus _playerStatus; // プレイヤーの状態フラグ
+    [SerializeField] private N_Gun gunScript; // 銃のスクリプト参照
+    [SerializeField] private GameObject pistole; // ピストルオブジェクト
+    [SerializeField] private PlayerView playerView; // プレイヤーの視覚効果管理用クラス参照
+    [SerializeField] private Combotest comboTextView; // コンボ表示用クラス参照
+    private GunView gunView; // 銃の視覚効果管理用クラス参照
+    private bool isHold = false; // ノーツ長押し判定用フラグ
+    [SerializeField] private NotesJudge notesJudge; // ノーツ判定用クラス参照
+
     private void Awake()
     {
-        //ScoreManager.instance.Score.Subscribe(x => Debug.Log(x));
-        playerScript = GetComponent<N_Player>();
-        gunScript = pistole.GetComponent<N_Gun>();
-        gunView = pistole.GetComponent<GunView>();
+        // スクリプトやコンポーネントの初期化
+        playerScript = GetComponent<N_Player>(); // N_Playerクラスのスクリプトを取得
+        gunScript = pistole.GetComponent<N_Gun>(); // ピストルオブジェクトにアタッチされたN_Gunクラスのスクリプトを取得
+        gunView = pistole.GetComponent<GunView>(); // ピストルオブジェクトにアタッチされたGunViewクラスのスクリプトを取得
     }
 
     private void Update()
     {
+        //if (Input.GetKeyDown(KeyCode.H))
+        //{
+        //    gunView.GravityEffectStopFX(); // Hキーが押されたらグラビティエフェクトを停止
+        //}
 
-        if (Input.GetKeyDown(KeyCode.H))
-        {
-            gunView.GravityEffectStopFX();
-        }
         if (!GameManager.instance.IsPause)
         {
             #region 入力処理
 
+            // 移動入力処理
             if (Input.GetAxisRaw("Horizontal") != 0 || Input.GetAxisRaw("Vertical") != 0)
             {
-                AddWalkFlag();
+                AddWalkFlag(); // 歩行フラグを追加
             }
             else
             {
                 playerScript._rg.velocity = new Vector3(0, playerScript._rg.velocity.y, 0);
-                DelWalkFlag();
+                DelWalkFlag(); // 歩行フラグを削除
             }
 
-            playerScript.Viewpoint(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
+            playerScript.Viewpoint(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y")); // プレイヤーの視点方向を設定
 
-            //現在のステータスにジャンプフラグが立っていない場合
-            //HasFlagは今のステータスにかっこの中のステータスが立っていたら
+            // ジャンプ入力処理
             if (Input.GetKeyDown(KeyCode.Space) && !_playerStatus.HasFlag(PlayerStatus.Jump) && playerScript.IsGround == true)
             {
-                playerScript.Jump();
-                AddJumpFlag();
+                playerScript.Jump(); // ジャンプ処理を実行
+                AddJumpFlag(); // ジャンプフラグを追加
             }
 
             if (playerScript.IsGround == true && _playerStatus.HasFlag(PlayerStatus.Jump))
             {
-                DelJumpFlag();
+                DelJumpFlag(); // ジャンプフラグを削除
             }
 
+            // 攻撃入力処理
             if (Input.GetMouseButtonDown(0))
             {
-                // 判定を構造体として、取得＆格納
+                // 判定を構造体として取得＆格納
                 NoteJugeIndex noteJugeIndex = notesJudge.NowNotes_Judge();
                 if (noteJugeIndex == null)
                 {
                     return;
                 }
+
+                // ノーツ判定がNiceであるかどうかをチェックして、対応するエフェクトやスコアを実行
                 if (noteJugeIndex.noteType == (int)NoteType.Tap && noteJugeIndex.jugeType == (int)NotesJudgeType.nice)
                 {
-                    gunView.ChangeThePistolEffect(PlayerGauge.instance.CullentGaugeColor.Value);
-
-                    playerView.ShootingView();
+                    gunView.ChangeThePistolEffect(PlayerGauge.instance.CullentGaugeColor.Value); // 対応する色のエフェクトを銃に適用
+                    playerView.ShootingView(); // 射撃アニメーション再生
                     if (gunScript.Shooting() != HitStatus.None)
                     {
-                        ScoreManager.instance.AddScoreForEnemyHit(PlayerGauge.instance.CullentGaugeColor.Value, gunScript._hitStatus);
-                        comboTextView.ComboAttend(gunScript.HitInfo.point,gunScript._hitStatus);
+                        ScoreManager.instance.AddScoreForEnemyHit(PlayerGauge.instance.CullentGaugeColor.Value, gunScript._hitStatus); // スコア加算
+                        comboTextView.ComboAttend(gunScript.HitInfo.point, gunScript._hitStatus); // コンボ表示
                     }
                 }
                 else if (noteJugeIndex.noteType == (int)NoteType.Hold && noteJugeIndex.jugeType == (int)NotesJudgeType.nice)
                 {
-                    //成功時k
-                    //bool成功のやつ
+                    // ノーツ長押し成功時の処理
                     isHold = true;
                 }
+
                 if (noteJugeIndex.jugeType == (int)NotesJudgeType.miss)
                 {
-                    PlayerGauge.instance.DownGauge();
-                    ComboSystem.instance.ResetCombo();
+                    PlayerGauge.instance.DownGauge(); // ゲージ減少
+                    ComboSystem.instance.ResetCombo(); // コンボリセット
                 }
             }
-            if (Input.GetMouseButton(0) && isHold == true)    //長押し
+
+            if (Input.GetMouseButton(0) && isHold == true)
             {
-                gunView.GravityEffectPlayFX();
+                gunView.GravityEffectPlayFX(); // 長押しエフェクトを再生
             }
+
             if (Input.GetMouseButtonUp(0) && isHold == true)
             {
                 isHold = false;
                 NoteJugeIndex noteJugeIndex = notesJudge.NowNotes_Judge();
                 if (noteJugeIndex.noteType == (int)NoteType.Hold && noteJugeIndex.jugeType == (int)NotesJudgeType.nice)
                 {
-                    gunView.GravityEffectStopFX();
+                    gunView.GravityEffectStopFX(); // 長押しエフェクトを停止
                     if (noteJugeIndex.jugeType == (int)NotesJudgeType.miss)
                     {
-                        PlayerGauge.instance.DownGauge();
-                        ComboSystem.instance.ResetCombo();
+                        PlayerGauge.instance.DownGauge(); // ゲージ減少
+                        ComboSystem.instance.ResetCombo(); // コンボリセット
                     }
-
                 }
             }
+
             #endregion
         }
     }
-    #region フラグの追加と消去
+
+    // フラグの追加と消去のための関数群
 
     public void AddWalkFlag()
     {
-        //今現在のステータス とwalkの0001のステータスがorで掛けてフラグを立てる
-        //どっちかが1立っていたら1を立てる
-        //0000 |0001 = 0001
-        //左から一個づつ比較している
-        _playerStatus |= PlayerStatus.Walk; //フラグの追加
+        _playerStatus |= PlayerStatus.Walk; // 歩行フラグを追加
     }
 
     public void DelWalkFlag()
     {
-        //今現在のステータスをwalkの1110 &をかけてフラグを消してる
-        //ANDは両方に1が立ったら結果に1が立つ
-        //0001 & 1111 =1111
-
-        _playerStatus &= ~PlayerStatus.Walk;
+        _playerStatus &= ~PlayerStatus.Walk; // 歩行フラグを削除
     }
 
     public void AddJumpFlag()
     {
-        _playerStatus |= PlayerStatus.Jump;
+        _playerStatus |= PlayerStatus.Jump; // ジャンプフラグを追加
     }
 
     public void DelJumpFlag()
     {
-        _playerStatus &= ~PlayerStatus.Jump;
+        _playerStatus &= ~PlayerStatus.Jump; // ジャンプフラグを削除
     }
 
     public void AddAttackFlag()
     {
-        _playerStatus |= PlayerStatus.Attack;
+        _playerStatus |= PlayerStatus.Attack; // アタックフラグを追加
     }
 
     public void DelAttackFlag()
     {
-        _playerStatus &= ~PlayerStatus.Attack;
+        _playerStatus &= ~PlayerStatus.Attack; // アタックフラグを削除
     }
-
-    #endregion
 
     private void FixedUpdate()
     {
         if (_playerStatus.HasFlag(PlayerStatus.Walk))
         {
-            playerScript.Move(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+            playerScript.Move(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")); // 移動処理
         }
     }
 
-
-
     public void TakeDamage(int value)
     {
-        //ゲージの減少
+        // ゲージの減少とスコアの減少
         PlayerGauge.instance.DownGauge();
-        //スコアの減少
         ScoreManager.instance.SubScore(value);
     }
 }
+
     </code>
 </pre>
     </div>
