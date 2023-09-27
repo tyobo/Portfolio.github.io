@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>ビルドビリオン</title>
+    <link rel="stylesheet" href="style.css"/>
+    <link rel="stylesheet" href="https://tyobo.github.io/Portfolio.github.io/vs2015.min.css" />
+    <script src="https://tyobo.github.io/Portfolio.github.io/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </head>
+  <div>
+    <h3>概要</h3>
+    <hr class="subhr">
+    <p>ジャンル:2D落ちものパズルバトル</p>
+    <p>プレイ人数:2人</p>
+    <p>プラットフォーム:PC/Xboxコントローラー</p>
+    <p>開発環境:2021.3.19f1/p>
+    <p>使用言語:C#</p>
+    <p>開発人数:13人(リーダ1人・プランナー3人・プログラマーリーダー1人・プログラマー5人・3Dデザイナー3人)</p>
+    <p>開発期間：22年4月～22年10月</p>
+    <p>就活メインでメンター枠として後輩に教える立場でした。</p>
+      <h3>学び</h3>
+      <hr>
+      <li>教えることで自分がどれだけそのプログラムについて知っているか再度認識しました。</li>
+      <li>後輩に教えるときはどこまで知っていて何がわかるかを一回確認をしてわからないところから教えることを学びました。</li>
+      <h3>担当箇所</h3>
+      <hr class="subhr">
+      <h3>イベントの発行</h3>
+      <hr>
+    <div>
+      <pre class="code C#"><code>
+using Cysharp.Threading.Tasks;
+using SpriteGlow;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.InputSystem;
+
+public class NewBuildingcon : MonoBehaviour
+{
+    [SerializeField] private UnityEvent myEvent = new UnityEvent();
+
+    void Update()
+    {
+
+        if (myEvent != null)
+        {
+            //myEventに登録されている関数を実行
+            myEvent.Invoke();
+        }
+    }
+  }
+    </code>
+</pre>
+    </div>
+        <p>
+          始めてUnityEventを学びました。
+          イベントを発行してinspector上で登録するとその処理が自動的に行われます。
+        </p>
+    </div> 
+    <h3>大砲ブロックのギミック</h3>
+      <hr>
+    <div>
+      <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEngine;
+
+public class Cannon : MonoBehaviour
+{
+    [SerializeField, Header("発射までにかかる時間")] private float _fireTime = 1; //発射にかかる秒数
+    [SerializeField, Header("弾発射のインパクト")] private float _cannnonBulletImpact;   //弾のスピード
+    [SerializeField] private GameObject _cannonBullet;
+    [SerializeField] private GameObject _cannonMuzzle;
+    private Rigidbody2D _rg;
+
+    private void Start()
+    {
+        _rg = this.gameObject.GetComponent<Rigidbody2D>();
+
+    }
+
+    private void Update()
+    {
+        if (GameManager.Instance.IsEndedGame == true)
+        {
+            this.enabled = false;
+        }
+    }
+
+    /// <summary>
+    /// イベント登録用関数
+    /// </summary>
+    public void EventRegistration()
+    {
+        StartCoroutine(CannonFire());
+    }
+
+    /// <summary>
+    /// 大砲の攻撃メソッド
+    /// </summary>
+    private IEnumerator CannonFire()
+    {
+        _rg.constraints = RigidbodyConstraints2D.FreezeRotation; //contrainsのローテーション固定
+        yield return new WaitForSeconds(_fireTime);//指定した時間待つ
+        if (GameManager.Instance.IsEndedGame == true) { yield break; }
+        GameObject clone = Instantiate(_cannonBullet, _cannonMuzzle.transform.position, this.transform.rotation);//弾生成
+        clone.GetComponent<Rigidbody2D>().AddForce(_cannnonBulletImpact * _cannonMuzzle.transform.right, ForceMode2D.Impulse);//弾に衝撃を与えて発射
+        SoundManager.Instance.PlaySE(SESoundData.SE.ExplosionBomb);
+        _rg.constraints = RigidbodyConstraints2D.None;//contrainsのチェックをすべて外す
+        this.enabled = false;   //スクリプトを非アクティブにする。
+    }
+}
+    </code>
+</pre>
+    </div>
+        <p>
+          大砲ブロックのギミックの処理です。
+          大砲が設置されて1秒後に砲弾を生成してRigidBodyAddforceで弾を飛ばしています。
+        </p>
+    </div> 
+    <h3>ジャッキブロックのギミック</h3>
+      <hr>
+    <div>
+      <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using UnityEngine;
+
+public class Jack : MonoBehaviour
+{
+    [SerializeField] private List<Sprite> _jackSprite = new List<Sprite>();//ジャッキの画像保管用\
+    [SerializeField] private float _maxAllowedAngleUp = 5f;
+    [SerializeField] private float _maxAllowedAngleDown = 175f;
+    private SpriteRenderer _mainSprite;//オブジェクトのSpriteRenderer参照用
+    private Animator _jackAnim;
+    private bool isOne = false;
+    private bool isUp = false;
+    private bool isDown = false;
+
+    private void Awake()
+    {
+        _mainSprite = this.gameObject.GetComponent<SpriteRenderer>();//SpriterRenderer格納
+        _jackAnim = this.gameObject.GetComponent<Animator>();
+        _mainSprite.sprite = _jackSprite[0];
+    }
+    private void FixedUpdate()
+    {
+        if (isUp == true && isDown == true && isOne == false)
+        {
+            JackingStart();
+            isOne = true;
+        }
+
+    }
+    public void UpEventHandler(Collider2D collision)
+    {
+        Vector2 contactNormal = collision.GetComponent<Collider2D>().ClosestPoint(transform.position) - (Vector2)transform.position;
+
+        // ブロックの法線ベクトルとの角度を計算
+        float angle = Vector2.Angle(Vector2.up, contactNormal);
+
+        // 角度が一定の範囲内にない場合は処理をスキップ
+        if (angle > _maxAllowedAngleUp)
+        {
+            isUp = false;
+            return;
+        }
+        // 角度が許容範囲内の場合の処理
+        isUp = true;
+    }
+    public void DownEventHandler(Collider2D collision)
+    {
+        Vector2 contactNormal = collision.GetComponent<Collider2D>().ClosestPoint(transform.position) - (Vector2)transform.position;
+
+        // ブロックの法線ベクトルとの角度を計算
+        float angle = Vector2.Angle(Vector2.up, contactNormal);
+
+        //Debug.Log(angle);
+        // 角度が一定の範囲内にない場合は処理をスキップ
+        if (angle < _maxAllowedAngleDown)
+        {
+            isDown = false;
+            return;
+        }
+        // 角度が許容範囲内の場合の処理
+        isDown = true;
+    }
+
+    public void ExitUpEventHandler()
+    {
+        isUp = false;
+    }
+    public void ExitDownEventHandler()
+    {
+        isDown = false;
+    }
+    /// <summary>
+    /// ジャッキが広がる処理
+    /// </summary>
+    public async void JackingStart()
+    {
+        await Task.Delay(500);
+        if (GameManager.Instance.IsEndedGame == true)
+        {
+            _jackAnim.speed = 0;
+            return;
+        }
+        _jackAnim.SetTrigger("JackActive");
+        _mainSprite.sprite = _jackSprite[1];
+        await Task.Delay(500);
+        if (GameManager.Instance.IsEndedGame == true)
+        {
+            _jackAnim.speed = 0;
+            return;
+        }
+        _mainSprite.sprite = _jackSprite[2];
+    }
+}
+    </code>
+</pre>
+    </div>
+    <div>
+      <pre class="code C#"><code>
+using System.Collections;
+using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEngine
+using UnityEngine.Events;
+
+public class TriggerChek : MonoBehaviour
+{
+    public UnityEvent<Collider2D> OnColliderStay;   //UnityEventの定義　引数Collider2D
+    public UnityEvent ExitEvent = new UnityEvent(); //Exitようイベント
+
+    /// <summary>
+    /// ジャッキの上と下のブロック検知
+    /// </summary>
+    /// <param name="collision"></param>
+    private void OnTriggerStay2D(Collider2D collision)
+    {
+        // OnColliderStayに格納されたUnityEventを呼び出し、引数にcollisionを渡している
+        OnColliderStay.Invoke(collision);
+    }
+    /// <summary>
+    /// 検知から離れた時の処理
+    /// </summary>
+    /// <param name="collision"></param>
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        //登録したイベントを発動
+        ExitEvent.Invoke();
+    }
+}
+</code>
+</pre>
+    </div>
+        <p>
+          ジャッキブロックのギミックです。
+          上下にジャッキオブジェクトの子にあるCheckBlockオブジェクトが平面のブロックがあるか検知して作動します。
+          TrigerCheckスクリプトにはイベントを発行して引数にはCollider2Dをです。
+          OncolliderStay2DにかくのされたUnityEventを呼び出し、引数にcollisionを渡しています。
+          渡されたcollisoinを用いてブロックの法線ベクトルと角度を取得して計算をして角度が一定かどうかを検知しています。
+          OnTriggerExit2Dも同様です。
+        </p>
+    </div> 
+  <body>
+    <p><a href=".\index.html">トップページへ戻る</a></p>
